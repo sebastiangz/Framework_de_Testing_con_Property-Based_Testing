@@ -15,3 +15,36 @@ def shrink(lst):
     return shrunk
 
 return Generator(generate, shrink)
+
+
+
+# 1. Definiciones necesarias (fuera de este fragmento)
+# class TestResult(...):
+# def shrink_counterexample(...):
+
+def property_test(num_tests):
+    def decorator(test_fn):
+        def wrapper(generators): # Los generadores que producen los valores
+            for i in range(num_tests):
+                try:
+
+                    pass # Sustituido por la lógica de prueba
+
+                except Exception: # o la excepción de aserción específica
+
+                    shrunk = shrink_counterexample(
+                        values,
+                        generators,
+                        test_fn
+                    )
+                    return TestResult(
+                        success=False,
+                        num_tests=i + 1,
+                        counterexample=values,
+                        shrunk_counterexample=shrunk
+                    )
+        
+            return TestResult(success=True, num_tests=num_tests)
+        
+        return wrapper
+    return decorator
