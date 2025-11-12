@@ -16,8 +16,6 @@ def shrink(lst):
 
 return Generator(generate, shrink)
 
-
-
 # 1. Definiciones necesarias (fuera de este fragmento)
 # class TestResult(...):
 # def shrink_counterexample(...):
