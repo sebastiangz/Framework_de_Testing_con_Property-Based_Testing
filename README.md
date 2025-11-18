@@ -595,3 +595,88 @@ pytest tests/test_performance.py --benchmark
 ## 📄 Licencia
 
 Proyecto académico - Universidad de Colima © 2025
+
+                          ┌────────────────────────────────────┐
+                          │  Functional Testing Framework      │
+                          └────────────────────────────────────┘
+                                        │
+      ┌──────────────────────────────────┼──────────────────────────────────────┐
+      │                                  │                                      │
+      ▼                                  ▼                                      ▼
+┌─────────────┐                 ┌────────────────┐                    ┌─────────────────┐
+│   src/      │                 │    tests/      │                    │    examples/    │
+└─────────────┘                 └────────────────┘                    └─────────────────┘
+      │                                  │                                      │
+      │                                  │                                      │
+      ▼                                  ▼                                      ▼
+┌─────────────┐   ┌────────────────┐   ┌──────────────────┐       ┌─────────────────────────┐
+│ generators  │   │ combinators    │   │ strategies       │       │ testing_data_structures │
+└─────────────┘   └────────────────┘   └──────────────────┘       └─────────────────────────┘
+      │                  │                    │
+      │ (Generadores     │ (Composición       │ (Estrategias listas
+      │  básicos)        │  funcional)        │  para usar)
+      │                  │                    │
+      │                  │                    │
+      ▼                  ▼                    ▼
+ ┌────────────────────────────────────────────────────────────────────────────┐
+ │                           properties.py                                    │
+ └────────────────────────────────────────────────────────────────────────────┘
+      │
+      │ (Define: forall, property_test, ejecución de tests,
+      │          orquestación completa del framework)
+      ▼
+ ┌──────────────────────────────┐
+ │        shrinking.py          │
+ └──────────────────────────────┘
+      │
+      │ (Reduce contraejemplos: shrink)
+      ▼
+ ┌──────────────────────────────┐
+ │         mutation.py          │
+ └──────────────────────────────┘
+      │
+      │ (Mutation Testing: mutantes AST, mutation score)
+      ▼
+   Resultados finales
+
+
+
+1. generators.py
+
+Crea valores aleatorios y sabe cómo reducirlos.
+
+Es la base de todo.
+
+2. combinators.py
+
+Combina generadores para crear generadores más complejos.
+
+3. strategies.py
+
+Usa generadores y combinadores para crear estrategias listas para usar.
+
+4. properties.py
+
+Toma estrategias/generadores y ejecuta tests repetidos.
+
+Detecta fallos.
+
+Llama al shrinker.
+
+5. shrinking.py
+
+Reduce valores que causan fallos.
+
+6. mutation.py
+
+Genera mutaciones del código a probar.
+
+Reejecuta tests para medir fortaleza del test suite.
+
+7. tests/
+
+Contiene tests del propio framework.
+
+8. examples/
+
+Ejemplos de cómo usar el framework en la vida real.
