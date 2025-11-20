@@ -22,6 +22,17 @@ Framework completo de testing funcional que incluye generadores de datos aleator
 
 ---
 
+## Caracteristicas Principales 
+- Generación Aleatoria de Casos:	El framework automáticamente genera casos de prueba aleatorios (incluyendo estructuras de datos complejas) basados en las especificaciones de entrada definidas para la propiedad. Esto automatiza la creación de tests.
+- Simplificación (Shrinking): Cuando se encuentra un caso fallido, el framework intenta simplificar automáticamente el caso de prueba fallido a la versión más pequeña y legible posible, facilitando la depuración.
+
+## Ejemplos de Uso 
+1. Generación de Casos de Prueba Aleatorios y Memoria
+Cuando un framework de PBT necesita probar una propiedad, como una función que ordena una lista, debe generar un gran volumen de listas de prueba.
+Generación de Listas Infinitas de Datos de Prueba:	En lugar de crear una lista con 1 millón de tuplas de entrada y guardarla en memoria (ej: todas_las_listas = [generar_lista() for _ in range(1000000)]), el PBT usa un generador.
+Ejemplo de Código (Conceptual):	casos_de_prueba = (generar_lista_aleatoria(tamanio_max) for _ in itertools.count())
+El generador (casos_de_prueba) solo produce la lista siguiente justo antes de que se necesite para la prueba. Si el framework se detiene después de 10,000 pruebas exitosas, solo se crearon 10,000 listas, no 1 millón, ahorrando recursos masivamente.
+
 ## 🛠️ Tecnologías Utilizadas
 
 - **Lenguaje**: Python 3.11+
