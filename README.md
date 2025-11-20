@@ -169,8 +169,7 @@ functional-testing-framework/
       │ (Mutation Testing: mutantes AST, mutation score)
       ▼
    Resultados finales
-
-   ```
+```
 
 
 
