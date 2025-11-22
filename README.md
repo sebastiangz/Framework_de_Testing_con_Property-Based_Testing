@@ -774,6 +774,10 @@ pytest tests/test_performance.py --benchmark
 **Nombre**: [Karol Said Preciado Castillo]  
 **Email**: [kpreciado6@ucol.mx]  
 **GitHub**: [k4rolPr3ciado](https://github.com/k4rolPr3ciado)
+
+**Nombre**: [Jordan Adrian Miramontes Gutierrez]  
+**Email**: [jordanmiramontesgtz@gmail.com]  
+**GitHub**: [JordanAMG-code](https://github.com/JordanAMG-code)
 ---
 
 ## 📄 Licencia
