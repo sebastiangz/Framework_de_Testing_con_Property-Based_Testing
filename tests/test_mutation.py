@@ -1,42 +1,61 @@
-"""
-test_mutation.py
-----------------
-Pruebas básicas para mutation.py
-Incluye tests de mutantes y cálculo de mutation score.
-"""
+# Se asume la importación de las herramientas base del framework
+from src.generators import integer, list_of
+from src.properties import property_test, forall
+# Se asume que el módulo mutation expone una función para evaluar la puntuación
+from src.mutation import run_mutation_test 
 
-from src.mutation import generate_mutants, mutation_score
+# --- Código bajo prueba (target) ---
+# Se define una función simple que será el objetivo de las mutaciones.
+# (En un proyecto real, esta función estaría en 'src/algos.py' o similar)
+def es_par(n: int) -> bool:
+    """Verifica si un número es par."""
+    return n % 2 == 0
 
-# ----------------------------
-# Código de ejemplo a testear
-# ----------------------------
-original_code = """
-def add(a, b):
-    return a + b
+# --- Propiedad Robusta para 'es_par' ---
+# Esta propiedad debe ser lo suficientemente buena para "matar" a los mutantes
+@property_test
+@forall(integer(min_value=-50, max_value=50))
+def propiedad_par_impar_inversion(n):
+    """
+    Propiedad: Si N es par, N+1 debe ser impar (y viceversa).
+    
+    Esta propiedad es fuerte porque relaciona dos resultados.
+    """
+    # Si N es par, N+1 NO debe ser par
+    if es_par(n):
+        assert not es_par(n + 1), f"El mutante sobrevivió: {n} es par y {n+1} también lo es."
+    
+    # Si N es impar (no es par), N-1 DEBE ser par
+    else:
+        assert es_par(n - 1), f"El mutante sobrevivió: {n} es impar y {n-1} es impar."
 
-"""
 
-def simple_test_suite():
-    # Test básico para add(a, b)
-    assert add(1, 2) == 3
-    assert add(0, 0) == 0
-    assert add(-1, 1) == 0
-
-# ----------------------------
-# Prueba 1: Generación de mutantes
-# ----------------------------
-mutants = generate_mutants(original_code)
-print(f"Mutantes generados ({len(mutants)}):")
-for m in mutants:
-    print(m)
-
-# ----------------------------
-# Prueba 2: Calcular mutation score
-# ----------------------------
-score = mutation_score(original_code, simple_test_suite)
-print(f"Mutation score: {score}")
-
-if __name__ == '__main__':
-    print("--- Ejecución de pruebas de mutación ---")
-    print(f"Número de mutantes: {len(mutants)}")
-    print(f"Mutation score: {score}")
+# --- Test de Mutación ---
+def test_puntuacion_de_mutacion_de_es_par():
+    """
+    Ejecuta el proceso de Mutation Testing en la función 'es_par'
+    utilizando 'propiedad_par_impar_inversion' para evaluar la calidad del test.
+    """
+    
+    # La función 'run_mutation_test' (hipotética) del framework:
+    # 1. Analiza el código de 'es_par'.
+    # 2. Genera mutantes (ej: cambia 'n % 2 == 0' por 'n % 2 != 0' o 'n % 3 == 0').
+    # 3. Ejecuta 'propiedad_par_impar_inversion' contra cada mutante.
+    # 4. Cuenta cuántos mutantes fueron "muertos" (hicieron fallar el test).
+    # 5. Retorna la puntuación de mutación (Mutants Killed / Total Mutants).
+    
+    puntuacion = run_mutation_test(
+        target_function=es_par,
+        property_test_function=propiedad_par_impar_inversion,
+        # Se asumen 1000 iteraciones por mutante para asegurar la detección
+        iterations=1000
+    )
+    
+    # Una puntuación de 1.0 (100%) es perfecta. 
+    # Se establece un umbral mínimo de 0.90 (90%)
+    umbral_minimo = 0.90
+    
+    assert puntuacion >= umbral_minimo, \
+        f" La puntuación de mutación ({puntuacion:.2f}) es baja. Los tests son débiles."
+    
+    print(f" Mutantes Muertos: {puntuacion * 100:.2f}% - La suite de tests es robusta.")
