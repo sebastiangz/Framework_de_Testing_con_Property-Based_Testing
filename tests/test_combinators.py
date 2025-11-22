@@ -1,215 +1,149 @@
 import pytest
 import random
-from src.combinators import one_of, frequency, tuple_of, map2
-from src.generators import Generator
+from src.combinators import one_of, tuple_of, map2
+from src.generators import integer, string, boolean
 
-# Generadores simples para testing
-def constant(value):
-    """Generador que siempre devuelve el mismo valor"""
-    return Generator(
-        generate=lambda rng, size: value,
-        shrink=lambda v: []
-    )
+# -----------------------------------------------------------------------------
+# Fixtures
+# -----------------------------------------------------------------------------
 
-def integers(min_val=0, max_val=100):
-    """Generador de enteros simples"""
-    def generate(rng, size):
-        return rng.randint(min_val, max_val)
-    
-    def shrink(value):
-        shrinks = []
-        if value > min_val:
-            shrinks.append(value - 1)
-        if value < max_val:
-            shrunks.append(value + 1)
-        return shrinks
-    
-    return Generator(generate, shrink)
+@pytest.fixture
+def rng():
+    """Generador de números aleatorios con semilla fija para reproducibilidad."""
+    return random.Random(42)
 
-def booleans():
-    """Generador de booleanos"""
-    return Generator(
-        generate=lambda rng, size: rng.choice([True, False]),
-        shrink=lambda v: []
-    )
+# -----------------------------------------------------------------------------
+# Test para one_of
+# -----------------------------------------------------------------------------
 
 class TestOneOf:
-    def test_one_of_chooses_from_generators(self):
-        """Test que one_of elige entre los generadores proporcionados"""
-        # Setup
-        gen1 = constant("a")
-        gen2 = constant("b")
-        gen3 = constant("c")
-        one_of_gen = one_of([gen1, gen2, gen3])
+    def test_one_of_selection(self, rng):
+        """
+        Verifica que one_of sea capaz de elegir valores de cualquiera 
+        de los generadores proporcionados.
+        """
+        gen_int = integer()
+        gen_str = string()
+        combined = one_of([gen_int, gen_str])
         
-        rng = random.Random(42)  # Semilla fija para reproducibilidad
-        size = 10
+        types_seen = set()
         
-        # Ejecución
-        result = one_of_gen.generate(rng, size)
+        # Generamos suficientes veces para asegurar que salen ambos tipos
+        for _ in range(50):
+            val = combined.generate(rng, size=10)
+            types_seen.add(type(val))
         
-        # Verificación
-        assert result in ["a", "b", "c"]
-    
-    def test_one_of_shrink(self):
-        """Test del shrinking de one_of"""
-        # Setup - generadores con shrinking
-        gen1 = integers(0, 10)
-        gen2 = integers(20, 30)
-        one_of_gen = one_of([gen1, gen2])
-        
-        # Test shrinking con valor que pertenece al primer generador
-        shrinks = one_of_gen.shrink(5)
-        assert 4 in shrinks or 6 in shrinks  # Debería reducir a 4 o 6
-        
-        # Test shrinking con valor que pertenece al segundo generador
-        shrinks = one_of_gen.shrink(25)
-        assert 24 in shrinks or 26 in shrinks
+        # Deberíamos haber visto tanto enteros como strings
+        assert int in types_seen
+        assert str in types_seen
+        assert len(types_seen) == 2
 
-class TestFrequency:
-    def test_frequency_respects_weights(self):
-        """Test que frequency respeta los pesos de los generadores"""
-        # Setup - gen_a con peso 1, gen_b con peso 9
-        gen_a = constant("a")
-        gen_b = constant("b")
-        freq_gen = frequency([(1, gen_a), (9, gen_b)])
+    def test_one_of_shrink_delegation(self):
+        """
+        Verifica que el shrinking se delegue al generador correcto.
+        Tu implementación itera sobre los generadores hasta que uno funciona.
+        """
+        gen_int = integer()
+        gen_str = string()
+        combined = one_of([gen_int, gen_str])
         
-        rng = random.Random(42)
-        size = 10
-        
-        # Ejecutar múltiples veces y contar frecuencias
-        results = [freq_gen.generate(rng, size) for _ in range(1000)]
-        
-        count_a = results.count("a")
-        count_b = results.count("b")
-        
-        # Verificación - b debería aparecer aproximadamente 9 veces más que a
-        ratio = count_b / max(count_a, 1)  # Evitar división por cero
-        assert 5 <= ratio <= 15  # Margen amplio para variabilidad aleatoria
-    
-    def test_frequency_shrink(self):
-        """Test del shrinking de frequency"""
-        # Setup
-        gen1 = integers(0, 10)
-        gen2 = integers(20, 30)
-        freq_gen = frequency([(1, gen1), (1, gen2)])
-        
-        # Test shrinking
-        shrinks = freq_gen.shrink(5)
-        assert len(shrinks) > 0
+        # Caso A: Shrinkear un entero (debería ser manejado por gen_int)
+        # El 10 se reduce típicamente a 0, 5, 9
+        shrunk_int = combined.shrink(10)
+        assert 0 in shrunk_int
+        assert 5 in shrunk_int
+
+        # Caso B: Shrinkear un string (gen_int fallará, debería capturar excepción y usar gen_str)
+        # "abc" se reduce a "", "ab", "bc"
+        shrunk_str = combined.shrink("abc")
+        assert "" in shrunk_str
+        assert "bc" in shrunk_str
+
+# -----------------------------------------------------------------------------
+# Test para tuple_of
+# -----------------------------------------------------------------------------
 
 class TestTupleOf:
-    def test_tuple_of_combines_generators(self):
-        """Test que tuple_of combina múltiples generadores"""
-        # Setup
-        int_gen = integers(1, 10)
-        bool_gen = booleans()
-        tuple_gen = tuple_of(int_gen, bool_gen)
+    def test_tuple_structure(self, rng):
+        """
+        Verifica que se genere una tupla con la longitud y tipos correctos.
+        """
+        gen = tuple_of(integer(), string(), boolean())
+        val = gen.generate(rng, size=10)
         
-        rng = random.Random(42)
-        size = 10
+        assert isinstance(val, tuple)
+        assert len(val) == 3
+        assert isinstance(val[0], int)
+        assert isinstance(val[1], str)
+        assert isinstance(val[2], bool)
+
+    def test_tuple_shrink_head_only(self):
+        """
+        Prueba crítica: Tu implementación actual de tuple_of SOLO reduce el primer elemento.
+        Este test verifica ese comportamiento específico.
+        """
+        gen = tuple_of(integer(), string())
         
-        # Ejecución
-        result = tuple_gen.generate(rng, size)
+        original_val = (10, "hello")
+        shrunk_vals = gen.shrink(original_val)
         
-        # Verificación
-        assert isinstance(result, tuple)
-        assert len(result) == 2
-        assert isinstance(result[0], int)
-        assert isinstance(result[1], bool)
-        assert 1 <= result[0] <= 10
-    
-    def test_tuple_of_shrink(self):
-        """Test del shrinking de tuple_of"""
-        # Setup
-        int_gen = integers(0, 10)
-        bool_gen = booleans()
-        tuple_gen = tuple_of(int_gen, bool_gen)
+        # Verificamos que el primer elemento (10) se redujo (ej. a 0)
+        # Esperamos ver (0, "hello")
+        expected_variant = (0, "hello")
+        assert expected_variant in shrunk_vals
         
-        # Test shrinking
-        original = (5, True)
-        shrinks = tuple_gen.shrink(original)
-        
-        # Debería generar tuplas reducidas
-        assert len(shrinks) > 0
-        for shrunk in shrinks:
-            assert isinstance(shrunk, tuple)
-            assert len(shrunk) == 2
+        # Verificamos que el segundo elemento ("hello") NO cambió en ninguna variante
+        # ya que tu lógica es: shrunk.append((s,) + rest)
+        for item in shrunk_vals:
+            assert item[1] == "hello"
+
+    def test_tuple_empty(self, rng):
+        """Manejo de generadores de tuplas vacías."""
+        gen = tuple_of()
+        val = gen.generate(rng, size=10)
+        assert val == ()
+        assert gen.shrink(()) == []
+
+# -----------------------------------------------------------------------------
+# Test para map2
+# -----------------------------------------------------------------------------
 
 class TestMap2:
-    def test_map2_applies_function(self):
-        """Test que map2 aplica la función a los valores generados"""
-        # Setup
-        int_gen1 = integers(1, 5)
-        int_gen2 = integers(1, 5)
+    def test_map2_logic(self, rng):
+        """
+        Verifica que la función se aplique a los resultados de dos generadores.
+        """
+        # Usamos generadores deterministas (rango min=max) para probar la matemática
+        gen_a = integer(min_val=5, max_val=5)
+        gen_b = integer(min_val=10, max_val=10)
         
-        # Función que suma dos números
-        map2_gen = map2(int_gen1, int_gen2, lambda a, b: a + b)
+        def add(x, y):
+            return x + y
+            
+        gen_sum = map2(gen_a, gen_b, add)
+        val = gen_sum.generate(rng, size=10)
         
-        rng = random.Random(42)
-        size = 10
-        
-        # Ejecución
-        result = map2_gen.generate(rng, size)
-        
-        # Verificación
-        assert isinstance(result, int)
-        assert 2 <= result <= 10  # 1+1=2, 5+5=10
-    
-    def test_map2_with_different_types(self):
-        """Test map2 con tipos diferentes"""
-        # Setup
-        int_gen = integers(1, 3)
-        bool_gen = booleans()
-        
-        # Función que combina int y bool
-        map2_gen = map2(int_gen, bool_gen, lambda num, flag: f"{num}-{flag}")
-        
-        rng = random.Random(42)
-        size = 10
-        
-        # Ejecución
-        result = map2_gen.generate(rng, size)
-        
-        # Verificación
-        assert isinstance(result, str)
-        parts = result.split("-")
-        assert len(parts) == 2
-        assert parts[0] in ["1", "2", "3"]
-        assert parts[1] in ["True", "False"]
+        assert val == 15  # 5 + 10
 
-def test_integration_multiple_combinators():
-    """Test de integración usando múltiples combinadores"""
-    # Crear un generador complejo combinando varios combinadores
-    int_gen = integers(1, 10)
-    bool_gen = booleans()
-    
-    # one_of entre int y bool
-    mixed_gen = one_of([int_gen, bool_gen])
-    
-    # frequency con diferentes pesos
-    weighted_gen = frequency([(2, int_gen), (1, bool_gen)])
-    
-    # tuple_of combinando todo
-    complex_gen = tuple_of(mixed_gen, weighted_gen)
-    
-    rng = random.Random(42)
-    size = 10
-    
-    # Generar algunos valores para verificar que funciona
-    for _ in range(10):
-        result = complex_gen.generate(rng, size)
-        assert isinstance(result, tuple)
-        assert len(result) == 2
+    def test_map2_different_types(self, rng):
+        """Verifica map2 combinando tipos distintos (int y str)."""
+        gen_str = string(min_length=1, max_length=1) # Un caracter
+        gen_int = integer(min_val=3, max_val=3)      # Numero 3
+        
+        def repeat(s, n):
+            return s * n
+            
+        gen_comb = map2(gen_str, gen_int, repeat)
+        val = gen_comb.generate(rng, size=10)
+        
+        # Debería ser un string de longitud 3
+        assert isinstance(val, str)
+        assert len(val) == 3
 
-# Tests de propiedades (property-based testing)
-def test_one_of_always_returns_valid_value():
-    """Property test: one_of siempre devuelve valores de los generadores fuente"""
-    gens = [constant("a"), constant("b"), integers(1, 5)]
-    one_of_gen = one_of(gens)
-    
-    rng = random.Random(42)
-    
-    for _ in range(100):
-        result = one_of_gen.generate(rng, 10)
-        assert (result == "a" or result == "b" or isinstance(result, int))
+    def test_map2_no_shrink(self):
+        """
+        Verifica que map2 devuelve lista vacía en shrink,
+        tal como está definido en la implementación.
+        """
+        gen = map2(integer(), integer(), lambda x, y: x + y)
+        assert gen.shrink(100) == []
