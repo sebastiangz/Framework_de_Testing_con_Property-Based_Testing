@@ -130,6 +130,7 @@ test_addition_commutative()
 
 ```
 functional-testing-framework/
+├── FTest_Engine.py
 ├── src/
 │   ├── __init__.py
 │   ├── generators.py       # Generadores de datos
@@ -143,6 +144,8 @@ functional-testing-framework/
 │   ├── test_properties.py
 │   ├── test_shrinking.py
 │   └── test_mutation.py
+│   ├── test_combinators.py    
+│   └── test_strategies.py     
 ├── examples/
 │   ├── testing_data_structures.py
 │   ├── testing_algorithms.py
