@@ -1,63 +1,126 @@
-# Importa las funciones clave del framework
-from src.generators import integer, list_of, string
-from src.properties import property_test, forall
+import pytest
+import random
+from src.strategies import (
+    small_ints, 
+    positive_ints, 
+    small_floats, 
+    booleans,
+    small_strings,
+    emails,
+    one_of_str_int
+)
 
-# --- Generadores de Datos (Estrategias) ---
-# Definimos los 'Strategies' que generarán datos aleatorios para nuestras pruebas.
+@pytest.fixture
+def rng():
+    return random.Random(42)
 
-# 1. Estrategia para números enteros positivos
-gen_pos_int = integer(min_value=1, max_value=100)
-
-# 2. Estrategia para listas de enteros pequeños (incluyendo la lista vacía)
-gen_small_list = list_of(integer(min_value=0, max_value=10), min_size=0, max_size=5)
-
-# 3. Estrategia para cadenas de texto (incluyendo la cadena vacía)
-gen_text = string(min_length=0, max_length=25)
-
-
-# --- Pruebas de Propiedad ---
-
-@property_test  # Decorador para indicar que esta es una prueba de propiedad
-@forall(gen_pos_int, gen_pos_int)  # Aplica la estrategia a los argumentos de la función
-def test_multiplication_associativity(a, b):
-    """
-    Propiedad: La multiplicación de números enteros es asociativa (a * b) == (b * a).
+class TestNumericStrategies:
     
-    El framework generará miles de pares (a, b) usando gen_pos_int
-    y validará que esta propiedad SIEMPRE se cumpla.
-    """
-    assert (a * b) == (b * a), f"Fallo con a={a}, b={b}"
+    def test_small_ints_range(self, rng):
+        """Verifica que small_ints se mantenga en el rango -10 a 10."""
+        gen = small_ints()
+        for _ in range(50):
+            val = gen.generate(rng, size=10)
+            assert isinstance(val, int)
+            assert -10 <= val <= 10
 
+    def test_positive_ints_default(self, rng):
+        """Verifica enteros positivos con config por defecto."""
+        gen = positive_ints()
+        for _ in range(50):
+            val = gen.generate(rng, size=10)
+            assert val >= 0
+            assert val <= 100 # Default max
 
-@property_test
-@forall(gen_small_list)
-def test_list_length_is_preserved_by_sorting(lst):
-    """
-    Propiedad: Ordenar una lista no debe cambiar su longitud.
+    def test_positive_ints_custom_max(self, rng):
+        """Verifica que se respete el argumento max_value."""
+        gen = positive_ints(max_value=1000)
+        vals = [gen.generate(rng, size=10) for _ in range(50)]
+        
+        assert min(vals) >= 0
+        assert max(vals) <= 1000
+        # Verificar que al menos uno sea mayor que el default anterior para asegurar que cambió
+        assert any(v > 100 for v in vals)
 
-    El framework generará miles de listas 'lst' usando gen_small_list
-    y verificará que la longitud inicial sea igual a la longitud después de ordenarse.
-    """
-    original_length = len(lst)
-    sorted_lst = sorted(lst)
-    
-    # Esta es una propiedad fundamental que debe ser cierta
-    assert len(sorted_lst) == original_length, f"Fallo: Lista original {lst} tenía longitud {original_length}, la ordenada tiene {len(sorted_lst)}"
+    def test_small_floats_range(self, rng):
+        gen = small_floats()
+        for _ in range(50):
+            val = gen.generate(rng, size=10)
+            assert isinstance(val, float)
+            assert -10.0 <= val <= 10.0
 
+    def test_booleans_strategy(self, rng):
+        gen = booleans()
+        val = gen.generate(rng, size=1)
+        assert isinstance(val, bool)
 
-@property_test
-@forall(gen_text)
-def test_string_reversal_inversion(s):
-    """
-    Propiedad: Revertir una cadena dos veces debe dar como resultado la cadena original.
-    """
-    reversed_once = s[::-1]
-    reversed_twice = reversed_once[::-1]
-    
-    # Verifica el invariant
-    assert reversed_twice == s, f"Fallo con cadena '{s}'"
+class TestTextStrategies:
 
-# --- Ejecución (Típicamente con pytest) ---
+    def test_small_strings_length(self, rng):
+        """Verifica la longitud máxima de las cadenas pequeñas."""
+        gen = small_strings(max_length=5)
+        for _ in range(20):
+            val = gen.generate(rng, size=10)
+            assert isinstance(val, str)
+            assert len(val) <= 5
 
-# Para ejecutar estas pruebas, si estás usando 'pytest', solo necesitarías correr:
-# $ pytest tests/test_strategies.py
+    def test_emails_format(self, rng):
+        """
+        Prueba de integración: verifica que la estrategia de email 
+        combine correctamente usuario y dominio usando map.
+        """
+        gen = emails()
+        for _ in range(20):
+            val = gen.generate(rng, size=10)
+            
+            # Validaciones básicas de estructura
+            assert isinstance(val, str)
+            assert "@" in val
+            assert val.endswith(".com")
+            
+            # Desglose simple
+            parts = val.split("@")
+            assert len(parts) == 2
+            user, domain_part = parts
+            domain = domain_part.replace(".com", "")
+            
+            # Verificamos longitudes mínimas definidas en strategies.py
+            # user: min 3, domain: min 3
+            assert len(user) >= 3
+            assert len(domain) >= 3
+
+    def test_emails_shrink_limitation(self):
+        """
+        Nota importante: En tu implementación base de Generator.map, 
+        definiste que el shrink devuelve siempre [].
+        Esta prueba confirma que esa limitación se hereda en la estrategia emails.
+        """
+        gen = emails()
+        val = "abc@def.com"
+        # Como usa .map(), el shrink se pierde (según tu código en generators.py)
+        assert gen.shrink(val) == []
+
+class TestCompositeStrategies:
+
+    def test_one_of_str_int_types(self, rng):
+        """
+        Verifica que la estrategia mixta produzca ambos tipos de datos.
+        """
+        gen = one_of_str_int()
+        types_seen = set()
+        
+        for _ in range(100):
+            val = gen.generate(rng, size=10)
+            types_seen.add(type(val))
+            
+            # Validación de rangos específicos de esta estrategia
+            if isinstance(val, int):
+                assert -10 <= val <= 10
+            elif isinstance(val, str):
+                assert len(val) <= 10
+        
+        # Estadísticamente deberíamos ver ambos
+        assert int in types_seen
+        assert str in types_seen
+        # Y nada más
+        assert len(types_seen) == 2
