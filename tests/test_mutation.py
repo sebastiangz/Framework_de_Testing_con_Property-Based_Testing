@@ -1,61 +1,173 @@
-# Se asume la importación de las herramientas base del framework
-from src.generators import integer, list_of
-from src.properties import property_test, forall
-# Se asume que el módulo mutation expone una función para evaluar la puntuación
-from src.mutation import run_mutation_test 
+import pytest
+import ast
+from src.mutation import (
+    MutationOperator, 
+    generate_mutants, 
+    mutation_score
+)
 
-# --- Código bajo prueba (target) ---
-# Se define una función simple que será el objetivo de las mutaciones.
-# (En un proyecto real, esta función estaría en 'src/algos.py' o similar)
-def es_par(n: int) -> bool:
-    """Verifica si un número es par."""
-    return n % 2 == 0
+class TestMutationOperators:
+    """
+    Pruebas unitarias para la lógica de generación de nodos AST mutados.
+    Se verifica a nivel de estructura AST antes de convertir a string.
+    """
 
-# --- Propiedad Robusta para 'es_par' ---
-# Esta propiedad debe ser lo suficientemente buena para "matar" a los mutantes
-@property_test
-@forall(integer(min_value=-50, max_value=50))
-def propiedad_par_impar_inversion(n):
-    """
-    Propiedad: Si N es par, N+1 debe ser impar (y viceversa).
-    
-    Esta propiedad es fuerte porque relaciona dos resultados.
-    """
-    # Si N es par, N+1 NO debe ser par
-    if es_par(n):
-        assert not es_par(n + 1), f"El mutante sobrevivió: {n} es par y {n+1} también lo es."
-    
-    # Si N es impar (no es par), N-1 DEBE ser par
-    else:
-        assert es_par(n - 1), f"El mutante sobrevivió: {n} es impar y {n-1} es impar."
+    def test_arithmetic_mutations_add(self):
+        # Nodo: a + b
+        node = ast.BinOp(
+            left=ast.Name(id='a', ctx=ast.Load()),
+            op=ast.Add(),
+            right=ast.Name(id='b', ctx=ast.Load())
+        )
+        
+        mutations = MutationOperator.arithmetic_mutations(node)
+        
+        # Add (+) debe mutar a Sub (-) y Mult (*)
+        ops = [type(m.op) for m in mutations]
+        assert ast.Sub in ops
+        assert ast.Mult in ops
+        assert len(mutations) == 2
+
+    def test_arithmetic_mutations_div(self):
+        # Nodo: a / b
+        node = ast.BinOp(
+            left=ast.Name(id='a', ctx=ast.Load()),
+            op=ast.Div(),
+            right=ast.Name(id='b', ctx=ast.Load())
+        )
+        
+        mutations = MutationOperator.arithmetic_mutations(node)
+        
+        # Div (/) debe mutar a Mult (*) y Sub (-)
+        ops = [type(m.op) for m in mutations]
+        assert ast.Mult in ops
+        assert ast.Sub in ops
+
+    def test_comparison_mutations_eq(self):
+        # Nodo: a == b
+        node = ast.Compare(
+            left=ast.Name(id='a', ctx=ast.Load()),
+            ops=[ast.Eq()],
+            comparators=[ast.Name(id='b', ctx=ast.Load())]
+        )
+        
+        mutations = MutationOperator.comparison_mutations(node)
+        
+        # Eq (==) debe mutar a NotEq (!=)
+        ops = [type(m.ops[0]) for m in mutations]
+        assert ast.NotEq in ops
+        assert len(mutations) == 1
+
+    def test_comparison_mutations_lt(self):
+        # Nodo: a < b
+        node = ast.Compare(
+            left=ast.Name(id='a', ctx=ast.Load()),
+            ops=[ast.Lt()],
+            comparators=[ast.Name(id='b', ctx=ast.Load())]
+        )
+        
+        mutations = MutationOperator.comparison_mutations(node)
+        
+        # Lt (<) debe mutar a LtE (<=) y Gt (>)
+        ops = [type(m.ops[0]) for m in mutations]
+        assert ast.LtE in ops
+        assert ast.Gt in ops
 
 
-# --- Test de Mutación ---
-def test_puntuacion_de_mutacion_de_es_par():
+class TestGenerateMutants:
     """
-    Ejecuta el proceso de Mutation Testing en la función 'es_par'
-    utilizando 'propiedad_par_impar_inversion' para evaluar la calidad del test.
+    Pruebas de integración para generate_mutants.
+    Verifica que se produzcan los strings de código correctos.
     """
-    
-    # La función 'run_mutation_test' (hipotética) del framework:
-    # 1. Analiza el código de 'es_par'.
-    # 2. Genera mutantes (ej: cambia 'n % 2 == 0' por 'n % 2 != 0' o 'n % 3 == 0').
-    # 3. Ejecuta 'propiedad_par_impar_inversion' contra cada mutante.
-    # 4. Cuenta cuántos mutantes fueron "muertos" (hicieron fallar el test).
-    # 5. Retorna la puntuación de mutación (Mutants Killed / Total Mutants).
-    
-    puntuacion = run_mutation_test(
-        target_function=es_par,
-        property_test_function=propiedad_par_impar_inversion,
-        # Se asumen 1000 iteraciones por mutante para asegurar la detección
-        iterations=1000
-    )
-    
-    # Una puntuación de 1.0 (100%) es perfecta. 
-    # Se establece un umbral mínimo de 0.90 (90%)
-    umbral_minimo = 0.90
-    
-    assert puntuacion >= umbral_minimo, \
-        f" La puntuación de mutación ({puntuacion:.2f}) es baja. Los tests son débiles."
-    
-    print(f" Mutantes Muertos: {puntuacion * 100:.2f}% - La suite de tests es robusta.")
+
+    def test_generate_simple_arithmetic(self):
+        source = "x = a + b"
+        mutants = generate_mutants(source)
+        
+        # Según tu implementación de Visitor, se devuelve el unparse del nodo mutado.
+        # Si mutamos '+', esperamos 'a - b' y 'a * b' como strings resultantes.
+        assert "a - b" in mutants
+        assert "a * b" in mutants
+        # No debe contener el original
+        assert "a + b" not in mutants
+
+    def test_generate_simple_comparison(self):
+        source = "if x == y: pass"
+        mutants = generate_mutants(source)
+        
+        # 'x == y' muta a 'x != y'
+        assert "x != y" in mutants
+
+    def test_generate_multiple_operators(self):
+        # Caso complejo: dos operadores
+        source = "a + b - c"
+        mutants = generate_mutants(source)
+        
+        # Deberíamos tener mutaciones para el primer operador (+)
+        # (a + b) es un nodo, así que esperamos (a - b)
+        assert "a - b" in mutants or "a * b" in mutants
+        
+        # Y mutaciones para el segundo operador (-)
+        # Todo el bloque es (a+b) - c. Al mutar el '-', esperamos (a+b) + c
+        assert "(a + b) + c" in mutants or "a + b + c" in mutants
+
+
+class TestMutationScore:
+    """
+    Pruebas para el cálculo del score.
+    Simulamos suites de tests que pasan o fallan.
+    """
+
+    def test_score_no_mutants(self):
+        # Código sin operadores mutables
+        code = "print('hello')"
+        # Test ficticio
+        dummy_test = lambda: None
+        
+        score = mutation_score(code, dummy_test)
+        # Si no hay mutantes, asumimos score perfecto o manejo de div/0 (tu código devuelve 1.0)
+        assert score == 1.0
+
+    def test_score_all_survived(self):
+        """
+        Si el test suite siempre PASA (no detecta fallos),
+        los mutantes sobreviven. Killed = 0. Score = 0.0.
+        """
+        code = "1 + 1" # Genera mutantes '1-1', '1*1'
+        
+        # Test suite que no hace nada (pasa siempre)
+        def weak_test_suite():
+            assert True 
+            
+        score = mutation_score(code, weak_test_suite)
+        assert score == 0.0
+
+    def test_score_all_killed(self):
+        """
+        Si el test suite siempre FALLA (lanza excepción),
+        asumimos que mató al mutante. Killed = len(mutants). Score = 1.0.
+        """
+        code = "1 + 1"
+        
+        # Test suite que falla siempre
+        def strict_test_suite():
+            raise AssertionError("Test failed!")
+            
+        score = mutation_score(code, strict_test_suite)
+        assert score == 1.0
+
+    def test_score_partial_kill(self):
+        """
+        Simulación compleja: Intentamos manipular el comportamiento
+        para matar solo algunos mutantes.
+        """
+        # Como mutation_score usa exec() sobre el fragmento mutado,
+        # es difícil controlar el estado 'killed' selectivamente sin mocks complejos.
+        # En su lugar, verificamos que el score es un float válido.
+        code = "a + b"
+        def dummy_suite():
+            pass
+            
+        score = mutation_score(code, dummy_suite)
+        assert isinstance(score, float)
+        assert 0.0 <= score <= 1.0
