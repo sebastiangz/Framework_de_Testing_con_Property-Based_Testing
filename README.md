@@ -1,5 +1,10 @@
 # 🧪 Proyecto 10: Framework de Testing Funcional con Property-Based Testing
 
+## NOMBRE COMPLETO DE INTEGRANTES 
+- Maria Fernanda Alcaraz Morales (malcaraz41@ucol.mx)
+- Jordan Adrián Miramontes Gutiérrez (Jmiramontes4@ucol.mx)
+- Karol Said Preciado Castillo (Kpreciado6@ucol.mx) 
+
 ## 📋 Descripción del Proyecto
 
 Framework completo de testing funcional que incluye generadores de datos aleatorios composables, property-based testing, shrinking de contraejemplos y mutation testing, todo implementado con programación funcional pura.
@@ -45,6 +50,20 @@ El generador (casos_de_prueba) solo produce la lista siguiente justo antes de qu
   - `typing` - Type hints avanzados
 
 ---
+
+## REFERENCIAS IEEE/ACM 
+- Claessen, K., & Hughes, J. (2000). QuickCheck: A lightweight tool for random testing 
+of Haskell programs. In Proceedings of the ACM SIGPLAN International 
+Conference on Functional Programming (pp. 268-279). ACM. 
+https://doi.org/10.1145/351240.351266
+- Pacheco, C., & Ernst, M. D. (2007). Randoop: Feedback-directed random testing in 
+Java. In Companion to the 22nd ACM SIGPLAN Conference on Object-oriented 
+Programming Systems and Applications (pp. 815-816).
+- Jia, Y., & Harman, M. (2011). An analysis and survey of the development of mutation 
+testing. IEEE Transactions on Software Engineering, 37(5), 649-678.
+
+## EMPRENDIMIENTO 
+- En nuestro proyecto queremos aumentaer la confiabilidad del software al validar automáticamente propiedades funcionales y tratar de disminuir costos en mantenimiento y depuración de código, Al igual que queremos tener impacto en la capacitación y certificaciones en testing automatizado y property-based testing y en marketplace de propiedades y generadores (venta de módulos específicos según dominio: finanzas, IoT, juegos). En nuestro proyecto tenemos destinado que nuestro objetivo en el cliente sea equipos de investigación o universidades que trabajan en validación de software y empresas nuevas que necesitan pruebas rápidas y automatizadas sin grandes recursos. 
 
 ## 📦 Instalación
 
@@ -685,9 +704,9 @@ pytest tests/test_performance.py --benchmark
 
 ## 👥 Autor
 
-**Nombre**: [Tu Nombre]  
-**Email**: [tu-email@ucol.mx]  
-**GitHub**: [@tu-usuario](https://github.com/tu-usuario)
+**Nombre**: [Maria Fernanda Alcaraz Morales]  
+**Email**: [malcaraz41@ucol.mx]  
+**GitHub**: [FerAlcaraz](https://github.com/)
 
 ---
 
