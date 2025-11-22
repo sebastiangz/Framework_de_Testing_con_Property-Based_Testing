@@ -38,6 +38,66 @@ Generación de Listas Infinitas de Datos de Prueba:	En lugar de crear una lista 
 Ejemplo de Código (Conceptual):	casos_de_prueba = (generar_lista_aleatoria(tamanio_max) for _ in itertools.count())
 El generador (casos_de_prueba) solo produce la lista siguiente justo antes de que se necesite para la prueba. Si el framework se detiene después de 10,000 pruebas exitosas, solo se crearon 10,000 listas, no 1 millón, ahorrando recursos masivamente.
 
+⚡ Guía de Inicio Rápido
+
+Imagina que este framework es un robot. Tú no le dices "prueba con 5 y luego con 10". Tú le enseñas una regla lógica y él la prueba con cientos de combinaciones.
+
+1. Estructura Básica
+
+En tu archivo de tests (ej. test_suite.py), importa las herramientas:
+Python
+
+from ftest import (
+    integer, string, list_of,  # 🧱 Los Generadores (Ingredientes)
+    property_test, forall       # 🤖 El Motor de Pruebas (El Robot)
+)
+
+2. Tu Primer Test de Propiedad
+
+Supongamos que tienes una función para calcular descuentos.
+
+Código a probar (mi_tienda.py):
+Python
+
+def calcular_precio_final(precio, descuento):
+    if descuento > precio:
+        return 0
+    return precio - descuento  # 🐛 Bug: No protegemos contra descuentos negativos
+
+Escribiendo el Test: En lugar de probar un solo caso, definimos una propiedad lógica: "El precio final nunca debe ser mayor al precio original".
+Python
+
+# test_tienda.py
+from ftest import property_test, forall, integer
+from mi_tienda import calcular_precio_final
+
+@property_test
+@forall(integer(min_val=1, max_val=1000), integer(min_val=-50, max_val=50))
+def test_seguridad_precio(precio, descuento):
+    """
+    Propiedad: Aplicar un descuento no debería encarecer el producto.
+    """
+    final = calcular_precio_final(precio, descuento)
+    
+    # El test pasa si devuelve True, falla si devuelve False
+    return final <= precio
+
+3. Ejecutar y Analizar Fallos (Shrinking)
+
+Ejecuta tu archivo de test:
+Bash
+
+python test_tienda.py
+
+Lo que verás: FTest encontrará que si el descuento es negativo (ej. -10), el precio aumenta. Pero no te dará números aleatorios gigantes; usará Shrinking para darte el ejemplo más simple posible:
+Plaintext
+
+❌ Test Fallado. 
+Contraejemplo encontrado: (842, -38)
+Shrunk (Simplificado): (1, -1)
+
+Interpretación: "Tu código falla incluso con precio 1 y descuento -1".
+
 ## 🛠️ Tecnologías Utilizadas
 
 - **Lenguaje**: Python 3.11+
