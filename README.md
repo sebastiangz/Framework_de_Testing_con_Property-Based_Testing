@@ -711,6 +711,9 @@ pytest tests/test_performance.py --benchmark
 **Email**: [malcaraz41@ucol.mx]  
 **GitHub**: [FerAlcaraz](https://github.com/)
 
+**Nombre**: [Karol Said Preciado Castillo]  
+**Email**: [kpreciado6@ucol.mx]  
+**GitHub**: [k4rolPr3ciado](https://github.com/k4rolPr3ciado)
 ---
 
 ## 📄 Licencia
