@@ -767,6 +767,9 @@ pytest tests/test_performance.py --benchmark
 
 ## 👥 Autor
 
+#Video exposicion del proyecto
+https://youtu.be/tu3d2PxIDVc
+
 **Nombre**: [Maria Fernanda Alcaraz Morales]  
 **Email**: [malcaraz41@ucol.mx]  
 **GitHub**: [FerAlcaraz](https://github.com/)
